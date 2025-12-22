@@ -1,6 +1,10 @@
 #!/bin/sh
 set -e
 
+# Ensure data directory exists and has correct permissions
+mkdir -p /app/data
+chown -R nextjs:nodejs /app/data 2>/dev/null || true
+
 echo "Running database migrations..."
 
 # SQLite doesn't need to wait for a separate service
