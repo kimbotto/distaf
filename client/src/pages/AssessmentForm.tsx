@@ -69,6 +69,7 @@ export default function AssessmentForm() {
   const isSavingRef = useRef(false);
   const percentageSliderTimeoutRef = useRef<NodeJS.Timeout>();
   const pendingPercentageResponse = useRef<{ metricId: string; answer: boolean; answerValue: number } | null>(null);
+  const noteTimeoutsRef = useRef<Record<string, NodeJS.Timeout>>({});
 
   // Refs to track current values without causing re-renders
   const systemNameRef = useRef(systemName);
@@ -350,7 +351,7 @@ export default function AssessmentForm() {
     },
     onSuccess: (response, variables) => {
       console.log('[saveMetricNoteMutation] Note saved successfully for metric:', variables.metricId);
-      queryClient.invalidateQueries({ queryKey: ["/api/assessments", id, "metric-notes"] });
+      // Don't invalidate queries to prevent refetch from overwriting local state
       setIsSaving(false);
     },
     onError: (error) => {
@@ -577,13 +578,16 @@ export default function AssessmentForm() {
   const handleMetricNoteChange = (metricId: string, notes: string) => {
     setMetricNotes(prev => ({ ...prev, [metricId]: notes }));
     if (id) {
+      // Clear previous timeout for this metric
+      if (noteTimeoutsRef.current[metricId]) {
+        clearTimeout(noteTimeoutsRef.current[metricId]);
+      }
+      
       // Debounce the save operation
-      const timeoutId = setTimeout(() => {
+      noteTimeoutsRef.current[metricId] = setTimeout(() => {
         saveMetricNoteMutation.mutate({ metricId, notes });
+        delete noteTimeoutsRef.current[metricId];
       }, 1000);
-
-      // Clear previous timeout
-      return () => clearTimeout(timeoutId);
     }
   };
 
